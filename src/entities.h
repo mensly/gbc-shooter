@@ -9,7 +9,7 @@ typedef struct {
     INT8  vx;
     INT8  vy;
     UINT8 active;
-    UINT8 sprite_idx; // starting OAM index (in 8x16 mode consumes 2 indices per visual sprite)
+    UINT8 sprite_idx; // OAM index (one 8x16 sprite per enemy bullet)
 } Bullet;
 
 typedef struct {
@@ -18,18 +18,19 @@ typedef struct {
     INT8  vx;
     INT8  vy;
     UINT8 active;
-    UINT8 sprite_idx; // uses 2 OAM entries (8x16)
+    UINT8 sprite_idx; // one 8x16 sprite
+    UINT8 jitter_counter; // controls erratic movement timing
 } Enemy;
 
 typedef struct {
     UINT8 x;
     UINT8 y;
-    UINT8 sprite_idx; // uses 4 OAM entries (stacked 8x16s)
+    UINT8 sprite_idx; // one 8x16 sprite
     UINT8 can_shoot_cooldown;
 } Player;
 
 #define MAX_BULLETS 8
-#define MAX_ENEMIES 6
+#define MAX_ENEMIES 4
 
 extern Player player;
 extern Bullet bullets[MAX_BULLETS];
