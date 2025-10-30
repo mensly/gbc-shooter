@@ -12,22 +12,33 @@ TARGET := $(BUILD_DIR)/$(PROJECT)
 # Sources
 SRC_DIR := src
 CSRC := $(SRC_DIR)/main.c
+HFILES := $(wildcard $(SRC_DIR)/*.h)
+
+# Objects
+OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(CSRC))
 
 # Flags
 # -Wa-l: generate assembler listing; -Wl-m: map file; -Wl-j: auto-join banks; -O2: optimize
-CFLAGS := -Wa-l -Wl-m -Wl-j -O2
+# -Wm-yC: mark ROM as CGB-only (boot in Game Boy Color mode)
+CFLAGS := -Wa-l -Wl-m -Wl-j -O2 -Wm-yC
 
 ROM := $(TARGET).gb
 
-.PHONY: all clean dirs
+.PHONY: all clean dirs test
 
 all: dirs $(ROM)
 
 dirs:
 	mkdir -p $(BUILD_DIR)
 
-$(ROM): $(CSRC)
-	$(LCC) $(CFLAGS) -o $@ $^
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | dirs
+	$(LCC) $(CFLAGS) -c -o $@ $<
+
+$(ROM): $(OBJS) $(HFILES) Makefile
+	$(LCC) $(CFLAGS) -o $@ $(OBJS)
+
+test: all
+	mgba-qt $(ROM)
 
 clean:
 	rm -rf $(BUILD_DIR)
