@@ -1,5 +1,6 @@
 #include <gb/gb.h>
 #include <rand.h>
+#include <gb/cgb.h>
 #include "graphics.h"
 #include "entities.h"
 
@@ -29,7 +30,7 @@ void entities_init(void) {
 
     // Player uses single 8x16
     SPRITES_8x16;
-    set_sprite_8x16(player.sprite_idx, TILE_PLAYER_BASE + 0, player.x, player.y - 8, 0);
+    set_sprite_8x16(player.sprite_idx, TILE_PLAYER_BASE + 0, player.x, player.y - 8, S_PAL(0));
 
     // Hide and reset bullets and enemies
     for (UINT8 i = 0; i < MAX_BULLETS; i++) {
@@ -52,7 +53,7 @@ void spawn_player_bullet(UINT8 x, UINT8 y) {
             bullets[i].y = y;
             bullets[i].vx = 0;
             bullets[i].vy = -3;
-            set_sprite_8x16(bullets[i].sprite_idx, TILE_BULLET_BASE + 0, bullets[i].x, bullets[i].y - 8, 0);
+            set_sprite_8x16(bullets[i].sprite_idx, TILE_BULLET_BASE + 0, bullets[i].x, bullets[i].y - 8, S_PAL(1));
             return;
         }
     }
@@ -122,7 +123,7 @@ void bullets_update(void) {
             move_sprite(bullets[i].sprite_idx, 0, 0);
             continue;
         }
-        set_sprite_8x16(bullets[i].sprite_idx, TILE_BULLET_BASE + 0, bullets[i].x, bullets[i].y - 8, 0);
+        set_sprite_8x16(bullets[i].sprite_idx, TILE_BULLET_BASE + 0, bullets[i].x, bullets[i].y - 8, S_PAL(1));
     }
 }
 
@@ -131,14 +132,16 @@ void enemies_update(void) {
     enemy_move_divider ^= 1;
     for (UINT8 i = 0; i < MAX_ENEMIES; i++) {
         if (!enemies[i].active) continue;
-        // Jitter: occasionally change horizontal and vertical velocity for erratic motion
+        // Jitter: less frequent and milder to reduce flickery motion
         enemies[i].jitter_counter++;
-        if ((enemies[i].jitter_counter & 0x07u) == 0u) { // ~ every 8 frames
-            UINT8 r = rng_seed += 13;
-            INT8 new_vx = (r & 3u) - 1; // -1,0,1
-            if (new_vx == 0 && (r & 0x10)) new_vx = (enemies[i].vx == 0) ? 1 : -enemies[i].vx; // sometimes flip
-            enemies[i].vx = new_vx;
-            enemies[i].vy = ((r & 0x20) ? 1 : 0); // sometimes pause vertical descent
+        if ((enemies[i].jitter_counter & 0x0Fu) == 0u) { // ~ every 16 frames
+            UINT8 r = (rng_seed += 13);
+            // 1/4 chance to flip horizontal direction, otherwise keep current
+            if ((r & 0x03u) == 0u) {
+                enemies[i].vx = (enemies[i].vx == 0) ? ((r & 0x10) ? 1 : -1) : (INT8)(-enemies[i].vx);
+            }
+            // Vertical: mostly keep moving down; rare short pause
+            enemies[i].vy = ((r & 0x30u) == 0x30u) ? 0 : 1;
         }
         if (!enemy_move_divider) {
             enemies[i].x += enemies[i].vx;
@@ -146,12 +149,21 @@ void enemies_update(void) {
         }
 
         // Despawn if they pass the bottom; otherwise allow going out of bounds
-        if (enemies[i].y > 160) {
+        if (enemies[i].y > 168) { // ensure fully off-screen
             enemies[i].active = 0;
             move_sprite(enemies[i].sprite_idx, 0, 0);
             continue;
         }
-        set_sprite_8x16(enemies[i].sprite_idx, TILE_ENEMY_BASE + 0, enemies[i].x, enemies[i].y - 8, S_PALETTE);
+        // Bounce horizontally at screen edges
+        if (enemies[i].x <= 8) {
+            enemies[i].x = 8;
+            if (enemies[i].vx < 0) enemies[i].vx = 1;
+        } else if (enemies[i].x >= 160) {
+            enemies[i].x = 160;
+            if (enemies[i].vx > 0) enemies[i].vx = -1;
+        }
+            set_sprite_8x16(enemies[i].sprite_idx, TILE_ENEMY_BASE + 0, enemies[i].x, enemies[i].y - 8, S_PAL(2));
+        set_sprite_8x16(enemies[i].sprite_idx, TILE_ENEMY_BASE + 0, enemies[i].x, enemies[i].y - 8, S_PAL(2));
     }
 }
 

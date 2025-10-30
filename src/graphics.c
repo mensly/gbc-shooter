@@ -64,12 +64,14 @@ void load_sprite_assets(void) {
 void init_sprite_palettes(void) {
     if (_cpu == CGB_TYPE) {
         const palette_color_t pals[] = {
-            // OBP0: player (white, cyan, blue, black)
-            RGB(31,31,31), RGB(10,31,31), RGB(0,10,31), RGB(0,0,0),
-            // OBP1: enemy (white, yellow, orange, black)
-            RGB(31,31,31), RGB(31,31,0),  RGB(31,15,0), RGB(0,0,0)
+            // Sprite palette 0: player (greens)
+            RGB(31,31,31), RGB(16,31,16), RGB(0,20,0), RGB(0,0,0),
+            // Sprite palette 1: bullets (reds)
+            RGB(31,31,31), RGB(31,16,16), RGB(31,0,0), RGB(0,0,0),
+            // Sprite palette 2: enemies (yellows)
+            RGB(31,31,31), RGB(31,31,0),  RGB(31,20,0), RGB(0,0,0)
         };
-        set_sprite_palette(0, 2, pals);
+        set_sprite_palette(0, 3, pals);
     } else {
         OBP0_REG = 0xE4; // DMG default shades
         OBP1_REG = 0xE4;
