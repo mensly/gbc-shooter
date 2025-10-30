@@ -27,7 +27,3 @@ sameboy build/gbc-shooter.gb
 # mGBA
 mgba-qt build/gbc-shooter.gb
 ```
-
-## Notes
-- Works on DMG and CGB. On CGB, the rectangle is true green; on DMG, greens are shades due to hardware palette.
-- Modify rectangle tile area in `src/main.c` via `x, y, w, h`.

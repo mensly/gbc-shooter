@@ -1,7 +1,6 @@
 # Minimal GBDK-2020 project Makefile
 # Requires GBDK-2020 installed and GBDK_HOME pointing to its root (e.g., /opt/gbdk)
 
-GBDK_HOME ?= /opt/gbdk
 LCC := $(GBDK_HOME)/bin/lcc
 
 # Output
@@ -11,7 +10,7 @@ TARGET := $(BUILD_DIR)/$(PROJECT)
 
 # Sources
 SRC_DIR := src
-CSRC := $(SRC_DIR)/main.c
+CSRC := $(wildcard $(SRC_DIR)/*.c)
 HFILES := $(wildcard $(SRC_DIR)/*.h)
 
 # Objects
