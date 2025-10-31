@@ -1,6 +1,13 @@
-# gbc-shooter (GBDK-2020 scaffold)
+# gbc-shooter
 
-Minimal starter using [GBDK-2020](https://github.com/gbdk-2020/gbdk-2020) that displays a white screen with a green rectangle for testing.
+Vertical shooter prototype built with [GBDK-2020](https://github.com/gbdk-2020/gbdk-2020).
+
+Features:
+- Player ship (8x16) can move freely and fire shots
+- Enemies spawn with erratic motion and despawn off-screen
+- Upward-scrolling starfield background
+- Game Boy Color palettes (player green, bullets red, enemies yellow)
+- Simple shoot/explosion sound effects
 
 ## Prerequisites
 - Install GBDK-2020 (download a release and extract)
@@ -27,3 +34,5 @@ sameboy build/gbc-shooter.gb
 # mGBA
 mgba-qt build/gbc-shooter.gb
 ```
+
+Audio is generated with the Game Boy sound hardware; ensure your emulator audio is enabled to hear the effects.

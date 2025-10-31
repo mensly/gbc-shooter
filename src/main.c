@@ -3,6 +3,7 @@
 #include "graphics.h"
 #include "entities.h"
 #include "starfield.h"
+#include "sound.h"
 
 static void init_palettes(void) { starfield_set_palettes(); }
 
@@ -18,6 +19,7 @@ void main(void) {
     init_sprite_palettes();
     init_palettes();
     load_sprite_assets();
+    sound_init();
 
     // Background starfield
     starfield_init();

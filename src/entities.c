@@ -3,6 +3,7 @@
 #include <gb/cgb.h>
 #include "graphics.h"
 #include "entities.h"
+#include "sound.h"
 
 Player player;
 Bullet bullets[MAX_BULLETS];
@@ -54,6 +55,7 @@ void spawn_player_bullet(UINT8 x, UINT8 y) {
             bullets[i].vx = 0;
             bullets[i].vy = -3;
             set_sprite_8x16(bullets[i].sprite_idx, TILE_BULLET_BASE + 0, bullets[i].x, bullets[i].y - 8, S_PAL(1));
+            sound_play_shoot();
             return;
         }
     }
@@ -181,6 +183,7 @@ void handle_collisions(void) {
                 bullets[b].active = 0;
                 move_sprite(enemies[e].sprite_idx, 0, 0);
                 move_sprite(bullets[b].sprite_idx, 0, 0);
+                sound_play_enemy_hit();
                 break;
             }
         }
