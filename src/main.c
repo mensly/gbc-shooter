@@ -4,6 +4,7 @@
 #include "entities.h"
 #include "starfield.h"
 #include "sound.h"
+#include "score.h"
 
 static void init_palettes(void) { starfield_set_palettes(); }
 
@@ -17,6 +18,8 @@ static GameState game_state = GAME_STATE_PLAY;
 
 static void show_game_over_screen(void);
 static void show_title_screen(void);
+static void hud_init(void);
+static void hud_draw_score(UINT16 val);
 
 #define GAME_OVER_TILE_BASE 3
 #define GAME_OVER_TILE_COUNT 7
@@ -103,6 +106,42 @@ static const unsigned char logo_tiles[] = {
     0x7E,0x00,0x3C,0x00,0x18,0x00,0x00,0x00,
 };
 
+// Digit tiles (0..9) for HUD/labels
+#define DIGIT_WIN_BASE 32
+#define DIGIT_BG_BASE  48
+static const unsigned char digit_tiles[] = {
+    // 0
+    0x3C,0x00,0x66,0x00,0x6E,0x00,0x76,0x00,
+    0x66,0x00,0x66,0x00,0x3C,0x00,0x00,0x00,
+    // 1
+    0x18,0x00,0x38,0x00,0x18,0x00,0x18,0x00,
+    0x18,0x00,0x18,0x00,0x7E,0x00,0x00,0x00,
+    // 2
+    0x3C,0x00,0x42,0x00,0x02,0x00,0x1C,0x00,
+    0x20,0x00,0x40,0x00,0x7E,0x00,0x00,0x00,
+    // 3
+    0x7E,0x00,0x04,0x00,0x1C,0x00,0x06,0x00,
+    0x02,0x00,0x42,0x00,0x3C,0x00,0x00,0x00,
+    // 4
+    0x06,0x00,0x0E,0x00,0x16,0x00,0x26,0x00,
+    0x7F,0x00,0x06,0x00,0x06,0x00,0x00,0x00,
+    // 5
+    0x7E,0x00,0x40,0x00,0x7C,0x00,0x02,0x00,
+    0x02,0x00,0x42,0x00,0x3C,0x00,0x00,0x00,
+    // 6
+    0x1C,0x00,0x20,0x00,0x7C,0x00,0x62,0x00,
+    0x42,0x00,0x46,0x00,0x3C,0x00,0x00,0x00,
+    // 7
+    0x7E,0x00,0x02,0x00,0x04,0x00,0x08,0x00,
+    0x10,0x00,0x20,0x00,0x20,0x00,0x00,0x00,
+    // 8
+    0x3C,0x00,0x42,0x00,0x24,0x00,0x3C,0x00,
+    0x42,0x00,0x42,0x00,0x3C,0x00,0x00,0x00,
+    // 9
+    0x3C,0x00,0x46,0x00,0x42,0x00,0x3E,0x00,
+    0x04,0x00,0x08,0x00,0x70,0x00,0x00,0x00,
+};
+
 // starfield moved to starfield.c
 
 void main(void) {
@@ -124,6 +163,7 @@ void main(void) {
     enable_interrupts();
     show_title_screen();
     game_state = GAME_STATE_TITLE;
+    score_init();
 
     while(1) {
         wait_vbl_done();
@@ -143,6 +183,8 @@ void main(void) {
                 // Reset background to starfield and show sprites for gameplay
                 starfield_init();
                 entities_init();
+                score_reset();
+                hud_init();
                 SHOW_SPRITES;
                 game_state = GAME_STATE_PLAY;
             }
@@ -153,7 +195,9 @@ void main(void) {
             enemies_update();
             try_spawn_enemy();
             handle_collisions();
+            hud_draw_score(score_current());
             if (entities_is_game_over()) {
+                score_try_update_top();
                 game_state = GAME_STATE_OVER;
                 show_game_over_screen();
             }
@@ -164,6 +208,8 @@ void main(void) {
                 HIDE_SPRITES;
                 starfield_init();
                 entities_init();
+                score_reset();
+                hud_init();
                 player_update();
                 enemies_update();
                 SHOW_SPRITES;
@@ -177,7 +223,9 @@ void main(void) {
 static void show_game_over_screen(void) {
     DISPLAY_OFF;
     HIDE_SPRITES;
+    HIDE_WIN;
     set_bkg_data(GAME_OVER_TILE_BASE, GAME_OVER_TILE_COUNT + 6, game_text_tiles);
+    set_bkg_data(DIGIT_BG_BASE, 10, digit_tiles);
     for (UINT8 y = 0; y < 18; y++) {
         for (UINT8 x = 0; x < 20; x++) {
             set_bkg_tile_xy(x, y, 0);
@@ -188,6 +236,39 @@ static void show_game_over_screen(void) {
     set_bkg_tiles(7, 9, 4, 1, game_over_row2);
     // Prompt
     set_bkg_tiles(4, 12, sizeof(title_prompt), 1, title_prompt);
+    // Show scores: TOP and SCORE
+    unsigned char top_lbl[] = { TILE_T, TILE_O, TILE_P };
+    set_bkg_tiles(3, 14, sizeof(top_lbl), 1, top_lbl);
+    UINT16 top = score_top();
+    unsigned char out_top[5];
+    UINT16 n = top;
+    UINT8 d0 = (UINT8)(n % 10); n /= 10;
+    UINT8 d1 = (UINT8)(n % 10); n /= 10;
+    UINT8 d2 = (UINT8)(n % 10); n /= 10;
+    UINT8 d3 = (UINT8)(n % 10); n /= 10;
+    UINT8 d4 = (UINT8)(n % 10);
+    out_top[0] = DIGIT_BG_BASE + d4;
+    out_top[1] = DIGIT_BG_BASE + d3;
+    out_top[2] = DIGIT_BG_BASE + d2;
+    out_top[3] = DIGIT_BG_BASE + d1;
+    out_top[4] = DIGIT_BG_BASE + d0;
+    set_bkg_tiles(7, 14, 5, 1, out_top);
+    unsigned char score_lbl[] = { TILE_S, TILE_C, TILE_O, TILE_R, TILE_E };
+    set_bkg_tiles(3, 15, sizeof(score_lbl), 1, score_lbl);
+    UINT16 cur = score_current();
+    unsigned char out_cur[5];
+    n = cur;
+    d0 = (UINT8)(n % 10); n /= 10;
+    d1 = (UINT8)(n % 10); n /= 10;
+    d2 = (UINT8)(n % 10); n /= 10;
+    d3 = (UINT8)(n % 10); n /= 10;
+    d4 = (UINT8)(n % 10);
+    out_cur[0] = DIGIT_BG_BASE + d4;
+    out_cur[1] = DIGIT_BG_BASE + d3;
+    out_cur[2] = DIGIT_BG_BASE + d2;
+    out_cur[3] = DIGIT_BG_BASE + d1;
+    out_cur[4] = DIGIT_BG_BASE + d0;
+    set_bkg_tiles(9, 15, 5, 1, out_cur);
     SHOW_BKG;
     DISPLAY_ON;
 }
@@ -195,7 +276,9 @@ static void show_game_over_screen(void) {
 static void show_title_screen(void) {
     DISPLAY_OFF;
     HIDE_SPRITES;
+    HIDE_WIN;
     set_bkg_data(GAME_OVER_TILE_BASE, GAME_OVER_TILE_COUNT + 6, game_text_tiles);
+    set_bkg_data(DIGIT_BG_BASE, 10, digit_tiles);
     set_bkg_data(TILE_LOGO, 4, logo_tiles);
     for (UINT8 y = 0; y < 18; y++) {
         for (UINT8 x = 0; x < 20; x++) {
@@ -209,8 +292,61 @@ static void show_title_screen(void) {
     unsigned char logo_map[4] = { TILE_LOGO+0, TILE_LOGO+1, TILE_LOGO+2, TILE_LOGO+3 };
     set_bkg_tiles(9, 4, 2, 2, logo_map);
     set_bkg_tiles(4, 12, sizeof(title_prompt), 1, title_prompt);
+    // Top score on title
+    unsigned char top_lbl2[] = { TILE_T, TILE_O, TILE_P };
+    set_bkg_tiles(7, 14, sizeof(top_lbl2), 1, top_lbl2);
+    UINT16 top2 = score_top();
+    unsigned char out2[5];
+    UINT16 n2 = top2;
+    UINT8 e0 = (UINT8)(n2 % 10); n2 /= 10;
+    UINT8 e1 = (UINT8)(n2 % 10); n2 /= 10;
+    UINT8 e2 = (UINT8)(n2 % 10); n2 /= 10;
+    UINT8 e3 = (UINT8)(n2 % 10); n2 /= 10;
+    UINT8 e4 = (UINT8)(n2 % 10);
+    out2[0] = DIGIT_BG_BASE + e4;
+    out2[1] = DIGIT_BG_BASE + e3;
+    out2[2] = DIGIT_BG_BASE + e2;
+    out2[3] = DIGIT_BG_BASE + e1;
+    out2[4] = DIGIT_BG_BASE + e0;
+    set_bkg_tiles(11, 14, 5, 1, out2);
     SHOW_BKG;
     DISPLAY_ON;
+}
+
+// HUD window for static score display
+static void hud_init(void) {
+    // Use window layer at top
+    move_win(7, 136);
+    SHOW_WIN;
+    // Load digit tiles into window tile data
+    set_win_data(DIGIT_WIN_BASE, 10, digit_tiles);
+    // Clear a small area
+    for (UINT8 i = 0; i < 20; i++) {
+        unsigned char z = 0;
+        set_win_tiles(i, 0, 1, 1, &z);
+    }
+    // Draw "SCORE" label using title font tiles
+    unsigned char score_lbl[] = { TILE_S, TILE_C, TILE_O, TILE_R, TILE_E };
+    set_win_tiles(0, 0, sizeof(score_lbl), 1, score_lbl);
+    hud_draw_score(0);
+}
+
+// Minimal number drawing: shows a 4-digit value using O(1) division approach
+static void hud_draw_score(UINT16 val) {
+    // Show as 5 digits at x=7..11 using window digit tiles
+    unsigned char out[5];
+    UINT16 n = val;
+    UINT8 d0 = (UINT8)(n % 10); n /= 10;
+    UINT8 d1 = (UINT8)(n % 10); n /= 10;
+    UINT8 d2 = (UINT8)(n % 10); n /= 10;
+    UINT8 d3 = (UINT8)(n % 10); n /= 10;
+    UINT8 d4 = (UINT8)(n % 10);
+    out[0] = DIGIT_WIN_BASE + d4;
+    out[1] = DIGIT_WIN_BASE + d3;
+    out[2] = DIGIT_WIN_BASE + d2;
+    out[3] = DIGIT_WIN_BASE + d1;
+    out[4] = DIGIT_WIN_BASE + d0;
+    set_win_tiles(7, 0, 5, 1, out);
 }
 
 

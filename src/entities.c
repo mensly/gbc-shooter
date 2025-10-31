@@ -4,6 +4,7 @@
 #include "graphics.h"
 #include "entities.h"
 #include "sound.h"
+#include "score.h"
 
 Player player;
 Bullet bullets[MAX_BULLETS];
@@ -213,6 +214,7 @@ void handle_collisions(void) {
                 move_sprite(enemies[e].sprite_idx, 0, 0);
                 move_sprite(bullets[b].sprite_idx, 0, 0);
                 sound_play_enemy_hit();
+                score_add(10);
                 break;
             }
         }
