@@ -9,10 +9,19 @@ Player player;
 Bullet bullets[MAX_BULLETS];
 Enemy enemies[MAX_ENEMIES];
 
+#define HUD_SPRITE_BASE (1 + MAX_BULLETS + MAX_ENEMIES)
+#define HUD_LIFE_SPRITES PLAYER_MAX_LIVES
+#define PLAYER_INVUL_DURATION 60
+
 static UINT8 rng_seed = 0;
 static UINT8 enemy_spawn_cooldown = 0; // frames until next enemy can spawn
 static UINT8 last_spawn_x = 80;
 static UINT8 enemy_move_divider = 0;   // toggles to slow enemy motion
+static UINT8 last_displayed_lives = 0xFF;
+static UINT8 game_over_flag = 0;
+
+static void update_life_sprites(void);
+static void player_take_hit(Enemy *enemy);
 
 // In 8x16 mode one OAM entry displays two tiles vertically.
 static void set_sprite_8x16(UINT8 oam_idx, UINT8 tile_base_even, UINT8 x, UINT8 y, UINT8 prop) {
@@ -23,6 +32,12 @@ static void set_sprite_8x16(UINT8 oam_idx, UINT8 tile_base_even, UINT8 x, UINT8 
 }
 
 void entities_init(void) {
+    game_over_flag = 0;
+    enemy_spawn_cooldown = 0;
+    enemy_move_divider = 0;
+    last_displayed_lives = 0xFF;
+    player.lives = PLAYER_MAX_LIVES;
+    player.invul_timer = 0;
     // Player at bottom center
     player.x = 80;
     player.y = 120;
@@ -44,9 +59,14 @@ void entities_init(void) {
         enemies[i].sprite_idx = 1 + MAX_BULLETS + i;
         move_sprite(enemies[i].sprite_idx, 0, 0);
     }
+    for (UINT8 i = 0; i < HUD_LIFE_SPRITES; i++) {
+        move_sprite(HUD_SPRITE_BASE + i, 0, 0);
+    }
+    update_life_sprites();
 }
 
 void spawn_player_bullet(UINT8 x, UINT8 y) {
+    if (game_over_flag) return;
     for (UINT8 i = 0; i < MAX_BULLETS; i++) {
         if (!bullets[i].active) {
             bullets[i].active = 1;
@@ -62,6 +82,7 @@ void spawn_player_bullet(UINT8 x, UINT8 y) {
 }
 
 void try_spawn_enemy(void) {
+    if (game_over_flag) return;
     // Enforce a cooldown so spawns aren't bunched into pairs
     if (enemy_spawn_cooldown > 0) {
         enemy_spawn_cooldown--;
@@ -89,7 +110,7 @@ void try_spawn_enemy(void) {
             enemies[i].vx = ((rng_seed & 1) ? 1 : -1);
             enemies[i].vy = 1;
             enemies[i].jitter_counter = rng_seed;
-            set_sprite_8x16(enemies[i].sprite_idx, TILE_ENEMY_BASE + 0, enemies[i].x, enemies[i].y - 8, S_PALETTE);
+            set_sprite_8x16(enemies[i].sprite_idx, TILE_ENEMY_BASE + 0, enemies[i].x, enemies[i].y - 8, S_PAL(2));
             // Set cooldown to space out spawns (avoid groups of two)
             enemy_spawn_cooldown = 20; // ~1/3 second at 60fps
             return;
@@ -98,6 +119,7 @@ void try_spawn_enemy(void) {
 }
 
 void player_update(void) {
+    if (game_over_flag) return;
     UINT8 keys = joypad();
     if (keys & J_LEFT)  { if (player.x > 8) player.x -= 2; }
     if (keys & J_RIGHT) { if (player.x < 160) player.x += 2; }
@@ -111,8 +133,14 @@ void player_update(void) {
         player.can_shoot_cooldown = 8;
     }
 
+    if (player.invul_timer > 0) player.invul_timer--;
+
     // Update player OAM
-    set_sprite_8x16(player.sprite_idx, TILE_PLAYER_BASE + 0, player.x, player.y - 8, 0);
+    if (player.invul_timer && (player.invul_timer & 0x04)) {
+        move_sprite(player.sprite_idx, 0, 0);
+    } else {
+        set_sprite_8x16(player.sprite_idx, TILE_PLAYER_BASE + 0, player.x, player.y - 8, S_PAL(0));
+    }
 }
 
 void bullets_update(void) {
@@ -130,6 +158,7 @@ void bullets_update(void) {
 }
 
 void enemies_update(void) {
+    if (game_over_flag) return;
     // Toggle divider to move enemies every other frame
     enemy_move_divider ^= 1;
     for (UINT8 i = 0; i < MAX_ENEMIES; i++) {
@@ -164,7 +193,6 @@ void enemies_update(void) {
             enemies[i].x = 160;
             if (enemies[i].vx > 0) enemies[i].vx = -1;
         }
-            set_sprite_8x16(enemies[i].sprite_idx, TILE_ENEMY_BASE + 0, enemies[i].x, enemies[i].y - 8, S_PAL(2));
         set_sprite_8x16(enemies[i].sprite_idx, TILE_ENEMY_BASE + 0, enemies[i].x, enemies[i].y - 8, S_PAL(2));
     }
 }
@@ -174,6 +202,7 @@ static UINT8 aabb_overlap(UINT8 x1, UINT8 y1, UINT8 w1, UINT8 h1, UINT8 x2, UINT
 }
 
 void handle_collisions(void) {
+    if (game_over_flag) return;
     for (UINT8 e = 0; e < MAX_ENEMIES; e++) {
         if (!enemies[e].active) continue;
         for (UINT8 b = 0; b < MAX_BULLETS; b++) {
@@ -187,7 +216,49 @@ void handle_collisions(void) {
                 break;
             }
         }
+        if (!enemies[e].active) continue;
+        if (player.invul_timer == 0) {
+            if (aabb_overlap(player.x - 8, player.y - 12, 16, 16, enemies[e].x - 8, enemies[e].y - 8, 16, 16)) {
+                player_take_hit(&enemies[e]);
+            }
+        }
     }
+}
+
+UINT8 entities_is_game_over(void) {
+    return game_over_flag;
+}
+
+static void update_life_sprites(void) {
+    if (player.lives == last_displayed_lives) return;
+    for (UINT8 i = 0; i < HUD_LIFE_SPRITES; i++) {
+        UINT8 oam = HUD_SPRITE_BASE + i;
+        if (i < player.lives) {
+            set_sprite_8x16(oam, TILE_UI_BASE + 0, 16 + (i * 12), 24, S_PAL(1));
+        } else {
+            move_sprite(oam, 0, 0);
+        }
+    }
+    last_displayed_lives = player.lives;
+}
+
+static void player_take_hit(Enemy *enemy) {
+    if (player.invul_timer || game_over_flag) return;
+    sound_play_enemy_hit();
+    if (enemy) {
+        enemy->active = 0;
+        move_sprite(enemy->sprite_idx, 0, 0);
+    }
+    if (player.lives > 0) {
+        player.lives--;
+        update_life_sprites();
+    }
+    if (player.lives == 0) {
+        game_over_flag = 1;
+        move_sprite(player.sprite_idx, 0, 0);
+        return;
+    }
+    player.invul_timer = PLAYER_INVUL_DURATION;
 }
 
 

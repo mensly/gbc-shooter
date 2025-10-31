@@ -27,10 +27,13 @@ typedef struct {
     UINT8 y;
     UINT8 sprite_idx; // one 8x16 sprite
     UINT8 can_shoot_cooldown;
+    UINT8 lives;
+    UINT8 invul_timer;
 } Player;
 
 #define MAX_BULLETS 8
 #define MAX_ENEMIES 4
+#define PLAYER_MAX_LIVES 3
 
 extern Player player;
 extern Bullet bullets[MAX_BULLETS];
@@ -43,6 +46,7 @@ void enemies_update(void);
 void spawn_player_bullet(UINT8 x, UINT8 y);
 void try_spawn_enemy(void);
 void handle_collisions(void);
+UINT8 entities_is_game_over(void);
 
 #endif
 

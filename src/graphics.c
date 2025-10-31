@@ -55,10 +55,21 @@ const unsigned char bullet_tiles[] = {
     0x18,0x00,0x18,0x00,0x18,0x00,0x18,0x00,
 };
 
+// HUD: heart indicator (top heart tile + blank bottom for 8x16 mode)
+const unsigned char hud_tiles[] = {
+    // Tile 0: small heart (color index 1)
+    0x00,0x00,0x0C,0x00,0x1E,0x00,0x3F,0x00,
+    0x3F,0x00,0x1E,0x00,0x0C,0x00,0x00,0x00,
+    // Tile 1: blank spacer for 8x16 pairing
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+};
+
 void load_sprite_assets(void) {
     set_sprite_data(TILE_PLAYER_BASE, PLAYER_TILES, player_tiles);
     set_sprite_data(TILE_ENEMY_BASE, ENEMY_TILES, enemy_tiles);
     set_sprite_data(TILE_BULLET_BASE, BULLET_TILES, bullet_tiles);
+    set_sprite_data(TILE_UI_BASE, UI_TILES, hud_tiles);
 }
 
 void init_sprite_palettes(void) {

@@ -6,6 +6,7 @@ Features:
 - Player ship (8x16) can move freely and fire shots
 - Enemies spawn with erratic motion and despawn off-screen
 - Upward-scrolling starfield background
+- Three-life system with heart HUD and game over screen
 - Game Boy Color palettes (player green, bullets red, enemies yellow)
 - Simple shoot/explosion sound effects
 
