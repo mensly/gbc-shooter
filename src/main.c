@@ -1,5 +1,6 @@
 #include <gb/gb.h>
 #include <gb/cgb.h>
+#include <gb/hardware.h>
 #include "graphics.h"
 #include "entities.h"
 #include "starfield.h"
@@ -225,6 +226,16 @@ static void show_game_over_screen(void) {
     DISPLAY_OFF;
     HIDE_SPRITES;
     HIDE_WIN;
+    // Reset scroll and BG mode
+    SCX_REG = 0; SCY_REG = 0;
+    if (_cpu == CGB_TYPE) {
+        static const unsigned char zero_attrs[32] = { 0 };
+        VBK_REG = 1; // attribute map
+        for (UINT8 y = 0; y < 32; y++) set_bkg_attributes(0, y, 32, 1, zero_attrs);
+        VBK_REG = 0; // tile data
+    }
+    // Ensure BG tile data bank selected before loading tiles
+    VBK_REG = 0;
     set_bkg_data(GAME_OVER_TILE_BASE, GAME_OVER_TILE_COUNT + 6, game_text_tiles);
     set_bkg_data(DIGIT_BG_BASE, 10, digit_tiles);
     for (UINT8 y = 0; y < 18; y++) {
@@ -278,6 +289,16 @@ static void show_title_screen(void) {
     DISPLAY_OFF;
     HIDE_SPRITES;
     HIDE_WIN;
+    // Reset scroll and BG mode
+    SCX_REG = 0; SCY_REG = 0;
+    if (_cpu == CGB_TYPE) {
+        static const unsigned char zero_attrs2[32] = { 0 };
+        VBK_REG = 1; // attribute map
+        for (UINT8 y = 0; y < 32; y++) set_bkg_attributes(0, y, 32, 1, zero_attrs2);
+        VBK_REG = 0; // tile data
+    }
+    // Ensure BG tile data bank selected before loading tiles
+    VBK_REG = 0;
     set_bkg_data(GAME_OVER_TILE_BASE, GAME_OVER_TILE_COUNT + 6, game_text_tiles);
     set_bkg_data(DIGIT_BG_BASE, 10, digit_tiles);
     set_bkg_data(TILE_LOGO, 4, logo_tiles);

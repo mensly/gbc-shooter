@@ -1,5 +1,6 @@
 #include <gb/gb.h>
 #include <gb/cgb.h>
+#include <gb/hardware.h>
 #include "starfield.h"
 
 // Background tiles: 0=black, 1=tiny bright dot, 2=tiny dim dot
@@ -43,6 +44,15 @@ static void starfield_fill_row(UINT8 row) {
 }
 
 void starfield_init(void) {
+    // For CGB: ensure BG attributes select VRAM bank 0, palette 0, no priority
+    if (_cpu == CGB_TYPE) {
+        static const unsigned char zero_attrs[32] = { 0 };
+        VBK_REG = 1; // attribute map
+        for (UINT8 y = 0; y < 32; y++) {
+            set_bkg_attributes(0, y, 32, 1, zero_attrs);
+        }
+        VBK_REG = 0; // back to tile data
+    }
     set_bkg_data(0, 3, bg_tiles);
     for (UINT8 y = 0; y < 32; y++) starfield_fill_row(y);
     scroll_y = 0;
