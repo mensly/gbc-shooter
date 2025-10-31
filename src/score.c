@@ -12,6 +12,7 @@ static UINT8 calc_chk(UINT8 lo, UINT8 hi) { return (UINT8)(0x5A ^ lo ^ hi); }
 
 void score_init(void) {
     ENABLE_RAM_MBC1;
+    SWITCH_RAM_MBC1(0);
     if (SRAM_PTR[0] == 'S' && SRAM_PTR[1] == 'S') {
         UINT8 lo = SRAM_PTR[2];
         UINT8 hi = SRAM_PTR[3];
@@ -34,6 +35,7 @@ void score_try_update_top(void) {
     if (g_current > g_top) {
         g_top = g_current;
         ENABLE_RAM_MBC1;
+        SWITCH_RAM_MBC1(0);
         UINT8 lo = (UINT8)(g_top & 0xFF);
         UINT8 hi = (UINT8)((g_top >> 8) & 0xFF);
         SRAM_PTR[0] = 'S';

@@ -161,9 +161,10 @@ void main(void) {
     SHOW_BKG;
     DISPLAY_ON;
     enable_interrupts();
+    // Load top score before drawing title so it appears correctly
+    score_init();
     show_title_screen();
     game_state = GAME_STATE_TITLE;
-    score_init();
 
     while(1) {
         wait_vbl_done();
