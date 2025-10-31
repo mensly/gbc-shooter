@@ -9,6 +9,8 @@ Features:
 - Three-life system with heart HUD and game over screen
 - Game Boy Color palettes (player green, bullets red, enemies yellow)
 - Simple shoot/explosion sound effects
+ - Title screen with logo and blinking "PRESS START" prompt
+ - Start button transitions: Title → Play, Game Over → Title/Restart
 
 ## Prerequisites
 - Install GBDK-2020 (download a release and extract)
@@ -37,3 +39,13 @@ mgba-qt build/gbc-shooter.gb
 ```
 
 Audio is generated with the Game Boy sound hardware; ensure your emulator audio is enabled to hear the effects.
+
+## Controls
+- D-Pad: Move ship
+- A: Shoot
+- Start: From Title → Start game; From Game Over → Return to Title
+
+## Notes
+- The ROM boots in Game Boy Color mode; on original DMG, colors appear as grayscale.
+- Enemies bounce at screen edges, move with slight randomness, and despawn after leaving the bottom.
+- The title screen is static (no scrolling); gameplay uses a scrolling starfield.
